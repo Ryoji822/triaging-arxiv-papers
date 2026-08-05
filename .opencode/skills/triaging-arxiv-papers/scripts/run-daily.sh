@@ -49,7 +49,7 @@ WINDOW="$(read_meta window)"
 
 log "status=$STATUS date=$RUN_DATE candidates=$CANDIDATES"
 if [ "$STATUS" != "ok" ]; then
-  log "この実行では配信しません（$STATUS）"
+  log "この実行では配信しません（${STATUS}）"
   exit 0
 fi
 
@@ -67,7 +67,7 @@ PROMPT="$(sed \
   -e "s|__REPORT__|$REPORT|g" \
   "$SKILL_DIR/prompts/daily.md")"
 
-log "OpenCode で採点します（model=$OPENCODE_MODEL）"
+log "OpenCode で採点します（model=${OPENCODE_MODEL}）"
 if ! timeout "${TRIAGE_TIMEOUT:-2700}" opencode run --model "$OPENCODE_MODEL" "$PROMPT" >&2; then
   fail "OpenCode の実行に失敗しました"
 fi
