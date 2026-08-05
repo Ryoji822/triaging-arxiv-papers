@@ -100,52 +100,25 @@ arXiv の告知は平日 20:00 ET に出る。1回の告知が含む投稿日が
 
 ## セットアップ
 
-### Secrets
+実行に必要な認証情報と投稿先は GitHub の **Settings → Secrets and variables → Actions**
+に登録する。内容はここには書かない。未登録のものがあると、ワークフローの
+`Validate secrets` ステップが何が足りないかを教える。
 
-| 名前 | 必須 | 用途 |
-|------|------|------|
-| `GLM_API_KEY` | ✅ | OpenCode のモデル呼び出し |
-| `SLACK_BOT_TOKEN` | | 未設定なら配信をスキップし、`reports/` への出力だけで完了扱い |
-
-### Variables
-
-| 名前 | 既定 | 用途 |
-|------|------|------|
-| `SLACK_CHANNEL` | — | 投稿先。下表の3形式に対応 |
-| `OPENCODE_MODEL` | `zai/glm-5.2` | 採点に使うモデル |
-
-`SLACK_CHANNEL` に入れられる値:
-
-| 形式 | 例 | 挙動 | 必要スコープ |
-|------|-----|------|-------------|
-| チャンネルID | `C012ABCDEF` | そのチャンネルへ投稿（**推奨**） | `chat:write` |
-| ユーザーID | `U012ABCDEF` | `conversations.open` で DM を開いて投稿 | `chat:write` + `im:write` |
-| チャンネル名 | `#ai-papers` | 名前解決して投稿 | `chat:write` |
-
-**IDを勧める。** チャンネル名は改名で静かに壊れる。スレッド返信も `chat:write` の
-範囲で送れるので、追加スコープは DM のときだけ必要になる。
-
-チャンネルへ投稿する場合は **Bot をそのチャンネルに招待する**こと（`/invite`）。
-していないと `not_in_channel` で落ちる。
+Slack の投稿先を登録していない場合も実行は止まらない。警告を出して
+`reports/` へのファイル出力だけで完了扱いになる。
 
 ### main の保護
 
-ruleset `protect main` で、既定ブランチに対して次を禁止している（例外なし）。
+ruleset で既定ブランチの **削除**と **force push** を禁止している（例外なし）。
 
-| 禁止 | 効果 |
-|------|------|
-| `deletion` | main を削除できない |
-| `non_fast_forward` | force push で履歴を書き換えられない |
+PR必須ルールは入れていない。日次ワークフローが `state/` と `reports/` を main へ
+直接 push するためで、個人所有リポジトリでは GitHub Actions を bypass 対象に
+指定できない（organization 所有が条件）ので、PR必須と自動 push は両立しない。
 
-**PR必須ルールは入れていない。** 日次ワークフローが `state/` と `reports/` を main へ
-直接 push するため、PR を必須にすると毎朝の実行が止まる。個人所有リポジトリでは
-`github-actions` アプリを bypass 対象に指定できない（organization 所有が条件）ので、
-PR必須と自動 push は両立しない。
-
-書き込みを admin だけに制限しているのは ruleset ではなく**アクセス権**である。
-現在 write を持つのは `Ryoji822`（admin）のみで、他者は fork + PR しか出せず、
-その PR をマージできるのも write 保持者だけである。**コラボレーターを追加すると
-この前提が崩れる**ので、追加するなら `read` 権限に留めること。
+書き込みを制限しているのは ruleset ではなく**アクセス権**である。write を持つのは
+オーナーのみで、他者は fork + PR しか出せず、その PR をマージできるのも write
+保持者だけ。**コラボレーターを追加するとこの前提が崩れる**ので、追加するなら
+`read` に留めること。
 
 ---
 
@@ -158,10 +131,15 @@ bash .opencode/skills/triaging-arxiv-papers/scripts/run-daily.sh
 # 取得だけ試す
 python3 .opencode/skills/triaging-arxiv-papers/scripts/fetch_arxiv.py --days 8
 
-# Slack の分割結果だけ確認する（送信しない）
+# Slack に送る内容と分割を確認する（送信しない）
 python3 .opencode/skills/triaging-arxiv-papers/scripts/post_slack.py \
   --report reports/2026-08-05.md --dry-run
 ```
+
+状態ファイルの置き場所は自動で決まる。スキルがこのリポジトリの下にあれば
+ルートの `state/` を、単体で `~/.claude/skills/` に置いた場合はスキル内を使う
+（`ARXIV_TRIAGE_HOME` で明示指定もできる）。**手動実行と自動実行で台帳が
+分裂しないことが重要**で、分裂すると重複除外が静かに効かなくなる。
 
 Claude Code から対話的に回す場合は `/triaging-arxiv-papers` を呼ぶ。
 
@@ -197,5 +175,3 @@ python3 scripts/selftest.py --live  # arXiv から要旨を取って本番同等
   実務ブログを別経路で見る必要がある。`fetch_crossref.py` で ACM / PVLDB / ACL 側を週次で補える
 - **GitHub Actions の cron は遅延・欠落する。** 曜日スキップと配信済み判定があるので
   遅延しても壊れないが、リポジトリが60日無活動になるとスケジュールは自動停止する
-- **このリポジトリが public の場合、`reports/` と `state/known-topics.md` は誰でも読める。**
-  実務接続の判断がそのまま出るので、社内向けの記述を含めるなら private にする

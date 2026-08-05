@@ -101,6 +101,30 @@ def split_messages(text: str, limit: int = CHUNK_LIMIT) -> list[str]:
     return messages
 
 
+def build_anchor(md: str, day: date, replies: int) -> str:
+    """タイムラインに残す短い親メッセージを作る。
+
+    レポート本文は長いので、親には「何の投稿か」だけを置いてスレッドに送る。
+    チャンネルやDMの一覧を1件で埋めないためで、ピン留めしても読みやすい。
+    """
+    period = ""
+    m = re.search(r"^\*{0,2}対象期間[：:]\s*(.+?)\*{0,2}$", md, re.MULTILINE)
+    if m:
+        period = m.group(1).strip().rstrip("*")
+
+    counts = re.search(
+        r"S[：:]\s*(\d+)\s*件\s*/\s*A[：:]\s*(\d+)\s*件\s*/\s*B[：:]\s*(\d+)\s*件", md
+    )
+
+    head = f":books: *arXiv 論文トリアージ* {period}".rstrip()
+    lines = [head]
+    if counts:
+        s, a, b = counts.groups()
+        lines.append(f"S {s}件 / A {a}件 / B {b}件")
+    lines.append(f"本文はスレッドに{replies}通で投稿します :thread:")
+    return "\n".join(lines)
+
+
 def _hard_split(block: str, limit: int) -> list[str]:
     """1セクションが上限を超える場合だけ行単位で割る。"""
     if len(block) <= limit:
@@ -221,10 +245,13 @@ def main() -> int:
     cfg = read_json(CONFIG_PATH, {"daily_schedule": {}})
     day = (date.fromisoformat(args.date) if args.date
            else today_in(cfg.get("daily_schedule", {}).get("timezone")))
-    messages = split_messages(to_mrkdwn(report.read_text(encoding="utf-8")))
-    if not messages:
+    raw = report.read_text(encoding="utf-8")
+    body = split_messages(to_mrkdwn(raw))
+    if not body:
         log("レポートが空です。送信しません")
         return 1
+    # 1通目は短いアンカー。本文は全部スレッド返信にしてタイムラインを汚さない
+    messages = [build_anchor(raw, day, len(body))] + body
 
     if args.dry_run:
         for i, m in enumerate(messages, 1):

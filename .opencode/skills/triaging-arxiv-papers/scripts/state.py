@@ -78,14 +78,27 @@ def write_json_atomic(path: Path, data: dict) -> None:
 def data_home(skill_root: Path) -> Path:
     """状態ファイルと中間ファイルの置き場所を決める。
 
-    既定はスキル自身のディレクトリ。`~/.claude/skills/` に置けばそのまま動く。
+    優先順位:
+      1. 環境変数 ARXIV_TRIAGE_HOME（明示指定）
+      2. リポジトリのルート — スキルが `<root>/.opencode/skills/<name>/` や
+         `<root>/.claude/skills/<name>/` の下にあり、かつ `<root>/state/known-topics.md`
+         が存在する場合
+      3. スキル自身のディレクトリ（`~/.claude/skills/` に単体で置いた場合）
 
-    リポジトリ運用では環境変数 ARXIV_TRIAGE_HOME にリポジトリのルートを渡す。
-    すると state/ と out/ がルート直下に出るので、既出台帳が浅い階層に見えて
-    レビューしやすくなる。スキル本体は自己完結のまま保てる。
+    2が必要な理由: 環境変数の指定を忘れた手動実行が、CI と別の場所に台帳を
+    書いてしまうと、状態が2つに分裂して重複除外も二重配信防止も効かなくなる。
+    しかもエラーは出ないので静かに壊れる。台帳の実在で判定するので、
+    ホームディレクトリを誤ってルートと見なすことはない。
     """
     env = os.environ.get("ARXIV_TRIAGE_HOME")
-    return Path(env).expanduser().resolve() if env else skill_root
+    if env:
+        return Path(env).expanduser().resolve()
+    for parent in skill_root.parents:
+        if parent.name in (".opencode", ".claude"):
+            root = parent.parent
+            if (root / "state" / "known-topics.md").exists():
+                return root
+    return skill_root
 
 
 def today_in(tz_name: str | None) -> date:

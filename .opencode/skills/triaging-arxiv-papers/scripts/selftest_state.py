@@ -195,6 +195,26 @@ def test_dm_target(tmp: Path) -> None:
     check("チャンネルでは API を叩かない", calls, [])
 
 
+def test_anchor(tmp: Path) -> None:
+    """親メッセージは短く、本文は全部スレッドに回ること。"""
+    print("=== 親メッセージ（アンカー） ===")
+    import post_slack
+
+    md = ("# arXiv 論文トリアージレポート\n"
+          "**対象期間：2026年8月3日〜2026年8月5日**\n\n"
+          "## S評価\n本文本文\n\n"
+          "## 収集メタデータ\n- S：3件 / A：7件 / B：15件 / C：59件\n")
+    anchor = post_slack.build_anchor(md, date(2026, 8, 5), replies=3)
+    check("対象期間が入る", "2026年8月3日〜2026年8月5日" in anchor, True)
+    check("件数が入る", "S 3件 / A 7件 / B 15件" in anchor, True)
+    check("スレッド通数が入る", "3通" in anchor, True)
+    check("短い（300文字未満）", len(anchor) < 300, True)
+    check("本文は入らない", "本文本文" in anchor, False)
+
+    bare = post_slack.build_anchor("# タイトルのみ\n中身\n", date(2026, 8, 5), replies=1)
+    check("期間も件数も無くても壊れない", bare.startswith(":books:"), True)
+
+
 def test_split(tmp: Path) -> None:
     print("=== レポートの分割 ===")
     import post_slack
@@ -217,6 +237,7 @@ def main() -> int:
         test_durability(tmp)
         test_slack_resume(tmp)
         test_dm_target(tmp)
+        test_anchor(tmp)
         test_split(tmp)
 
     print()
