@@ -165,6 +165,36 @@ def test_slack_resume(tmp: Path) -> None:
     check("全通配信済みなら何も送らない", len(sent), 3)
 
 
+def test_dm_target(tmp: Path) -> None:
+    """DM（ユーザーID）とチャンネルを見分け、DM だけ conversations.open で解決する。"""
+    print("=== 投稿先の解決（DM 対応） ===")
+    import post_slack
+
+    check("ユーザーIDを判定する", post_slack.is_user_id("U012ABCDEF"), True)
+    check("Enterprise Grid の W も判定する", post_slack.is_user_id("W012ABCDEF"), True)
+    check("公開チャンネルIDは誤判定しない", post_slack.is_user_id("C012ABCDEF"), False)
+    check("DMチャンネルIDは誤判定しない", post_slack.is_user_id("D012ABCDEF"), False)
+    check("#名前は誤判定しない", post_slack.is_user_id("#ai-papers"), False)
+    check("前後の空白を無視する", post_slack.is_user_id(" U012ABCDEF "), True)
+
+    calls: list[tuple[str, dict]] = []
+
+    def fake_call(token, method, payload):
+        calls.append((method, payload))
+        return {"ok": True, "channel": {"id": "D999XYZ"}}
+
+    post_slack.call = fake_call
+    check("ユーザーIDはDMに解決される",
+          post_slack.resolve_target("xoxb-dummy", "U012ABCDEF"), "D999XYZ")
+    check("conversations.open を呼ぶ", calls[0][0], "conversations.open")
+    check("users にユーザーIDを渡す", calls[0][1], {"users": "U012ABCDEF"})
+
+    calls.clear()
+    check("チャンネルIDはそのまま",
+          post_slack.resolve_target("xoxb-dummy", "C012ABCDEF"), "C012ABCDEF")
+    check("チャンネルでは API を叩かない", calls, [])
+
+
 def test_split(tmp: Path) -> None:
     print("=== レポートの分割 ===")
     import post_slack
@@ -186,6 +216,7 @@ def main() -> int:
         test_run_ledger(tmp)
         test_durability(tmp)
         test_slack_resume(tmp)
+        test_dm_target(tmp)
         test_split(tmp)
 
     print()

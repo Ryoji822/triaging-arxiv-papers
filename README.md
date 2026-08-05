@@ -111,10 +111,22 @@ arXiv の告知は平日 20:00 ET に出る。1回の告知が含む投稿日が
 
 | 名前 | 既定 | 用途 |
 |------|------|------|
-| `SLACK_CHANNEL` | — | 投稿先（例 `#ai-papers`） |
+| `SLACK_CHANNEL` | — | 投稿先。下表の3形式に対応 |
 | `OPENCODE_MODEL` | `zai/glm-5.2` | 採点に使うモデル |
 
-Slack Bot に必要なスコープは `chat:write`（スレッド返信も同じスコープ）。
+`SLACK_CHANNEL` に入れられる値:
+
+| 形式 | 例 | 挙動 | 必要スコープ |
+|------|-----|------|-------------|
+| チャンネルID | `C012ABCDEF` | そのチャンネルへ投稿（**推奨**） | `chat:write` |
+| ユーザーID | `U012ABCDEF` | `conversations.open` で DM を開いて投稿 | `chat:write` + `im:write` |
+| チャンネル名 | `#ai-papers` | 名前解決して投稿 | `chat:write` |
+
+**IDを勧める。** チャンネル名は改名で静かに壊れる。スレッド返信も `chat:write` の
+範囲で送れるので、追加スコープは DM のときだけ必要になる。
+
+チャンネルへ投稿する場合は **Bot をそのチャンネルに招待する**こと（`/invite`）。
+していないと `not_in_channel` で落ちる。
 
 ---
 

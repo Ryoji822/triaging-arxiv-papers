@@ -119,12 +119,9 @@ def _hard_split(block: str, limit: int) -> list[str]:
 
 # ---------------------------------------------------------------- slack api
 
-def post(token: str, channel: str, text: str, thread_ts: str | None) -> str:
-    payload = {"channel": channel, "text": text, "unfurl_links": False}
-    if thread_ts:
-        payload["thread_ts"] = thread_ts
+def call(token: str, method: str, payload: dict) -> dict:
     req = urllib.request.Request(
-        API,
+        f"https://slack.com/api/{method}",
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Authorization": f"Bearer {token}",
@@ -138,8 +135,42 @@ def post(token: str, channel: str, text: str, thread_ts: str | None) -> str:
         raise RuntimeError(f"Slack への接続に失敗しました: {exc}") from exc
     if not body.get("ok"):
         # エラー本文にトークンは含まれない。error コードだけを出す
-        raise RuntimeError(f"Slack API エラー: {body.get('error')}")
-    return body.get("ts") or ""
+        raise RuntimeError(f"Slack API エラー ({method}): {body.get('error')}")
+    return body
+
+
+def is_user_id(target: str) -> bool:
+    """ユーザーIDか判定する。DM なら送信先を解決する必要がある。
+
+    チャンネルIDは C（公開）/ G（旧プライベート）/ D（DM）で始まり、
+    ユーザーIDは U または W（Enterprise Grid）で始まる。
+    """
+    return bool(re.match(r"^[UW][A-Z0-9]{6,}$", target.strip()))
+
+
+def resolve_target(token: str, target: str) -> str:
+    """投稿先を chat.postMessage が受け取れる形にする。
+
+    ユーザーIDを渡された場合は conversations.open で DM チャンネル（D...）を
+    開いて、そのIDを返す。ユーザーIDをそのまま chat.postMessage に渡す形は
+    挙動が保証されないので、必ず DM チャンネルに解決してから投げる。
+    """
+    target = target.strip()
+    if not is_user_id(target):
+        return target
+    body = call(token, "conversations.open", {"users": target})
+    dm = (body.get("channel") or {}).get("id")
+    if not dm:
+        raise RuntimeError(f"DM チャンネルを開けませんでした: {target}")
+    log(f"DM チャンネルを開きました: {target} → {dm}")
+    return dm
+
+
+def post(token: str, channel: str, text: str, thread_ts: str | None) -> str:
+    payload = {"channel": channel, "text": text, "unfurl_links": False}
+    if thread_ts:
+        payload["thread_ts"] = thread_ts
+    return call(token, "chat.postMessage", payload).get("ts") or ""
 
 
 # ---------------------------------------------------------------- main
@@ -174,7 +205,8 @@ def main() -> int:
     p = argparse.ArgumentParser(description="トリアージレポートを Slack に投稿する")
     p.add_argument("--report", required=True, help="Markdown レポートのパス")
     p.add_argument("--channel", default=os.environ.get("SLACK_CHANNEL"),
-                   help="投稿先（既定は環境変数 SLACK_CHANNEL）")
+                   help="投稿先。チャンネルID（C...）かユーザーID（U...=DM）"
+                        "または #channel-name（既定は環境変数 SLACK_CHANNEL）")
     p.add_argument("--date", default=None, help="配信日 YYYY-MM-DD（既定は設定TZの今日）")
     p.add_argument("--dry-run", action="store_true", help="送信せず分割結果だけ表示する")
     p.add_argument("--mark-run", action="store_true",
@@ -207,7 +239,7 @@ def main() -> int:
         log("投稿先が未指定です（--channel か SLACK_CHANNEL）。送信をスキップします")
         return 2
 
-    entry = deliver(messages, token, args.channel, day)
+    entry = deliver(messages, token, resolve_target(token, args.channel), day)
     if args.mark_run:
         RunLedger(HOME / "state" / "runs.json").record(
             day, delivered="slack", messages=entry.get("delivered", 0)
