@@ -1,0 +1,127 @@
+name: Daily arXiv Triage
+
+on:
+  schedule:
+    # 02:00 UTC = 11:00 JST の平日。arXiv の告知（平日 20:00 ET = 01:00 UTC）の後に走らせる。
+    # 08:00 JST では当日の告知前になり、前営業日ぶんしか取れない。
+    - cron: "0 2 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "遡る日数（空なら曜日から自動決定: 月4日 / 火〜金2日）"
+        required: false
+        type: string
+      force:
+        description: "配信済みの日でも実行する"
+        required: false
+        type: boolean
+        default: false
+
+# 状態ファイル（state/）への同時書き込みは重複配信の原因になるので直列化する。
+# 走っているものを殺すと配信途中で止まるため cancel-in-progress は false。
+concurrency:
+  group: daily-triage
+  cancel-in-progress: false
+
+permissions:
+  contents: write # state/ と reports/ のコミットに必要
+
+env:
+  TZ: Asia/Tokyo
+  SKILL: .opencode/skills/triaging-arxiv-papers
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install OpenCode
+        run: curl -fsSL https://opencode.ai/install | bash
+
+      - name: Validate secrets
+        env:
+          GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        run: |
+          if [ -z "${GLM_API_KEY:-}" ]; then
+            echo "::error::GLM_API_KEY が未設定です"
+            exit 1
+          fi
+          if [ -z "${SLACK_BOT_TOKEN:-}" ]; then
+            echo "::warning::SLACK_BOT_TOKEN が未設定です。Slack 配信はスキップされます"
+          fi
+
+      # 取得 → 採点 → 配信 → 既出登録。中身は run-daily.sh に集約している
+      - name: Run daily triage
+        env:
+          GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ vars.SLACK_CHANNEL }}
+          OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || 'zai/glm-5.2' }}
+          # ${{ }} を run: に直接埋めると入力値がシェルに解釈される。env 経由で渡す
+          TRIAGE_DAYS: ${{ inputs.days }}
+          TRIAGE_FORCE: ${{ inputs.force && '1' || '0' }}
+        run: bash "$SKILL/scripts/run-daily.sh"
+
+      - name: Commit state and report
+        if: success()
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add state reports
+          if git diff --cached --quiet; then
+            echo "変更はありません（土日・配信済み・候補0件のいずれか）"
+            exit 0
+          fi
+          git commit -m "chore(triage): $(TZ=Asia/Tokyo date +%F) の既出台帳とレポートを更新"
+          # 他の push と競合しても状態を落とさないよう数回やり直す
+          for i in 1 2 3; do
+            if git pull --rebase --autostash && git push; then exit 0; fi
+            sleep $((i * 5))
+          done
+          echo "::error::コミットに失敗しました。次回の重複除外が効きません"
+          exit 1
+
+      - name: Summary
+        if: always()
+        run: |
+          META="out/run_meta.json"
+          if [ -f "$META" ]; then
+            python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          m = json.load(open("out/run_meta.json"))
+          print(f"## arXiv トリアージ {m.get('date','')}\n")
+          print(f"- status: `{m.get('status')}`")
+          print(f"- 対象期間: {m.get('window','-')}")
+          print(f"- 取得 {m.get('fetched',0)} / 期間外 {m.get('dropped_old',0)} / "
+                f"既出 {m.get('dropped_seen',0)} / 低スコア {m.get('dropped_lowscore',0)} "
+                f"→ 候補 {m.get('candidates',0)}")
+          if m.get("reason"):
+              print(f"- 理由: {m['reason']}")
+          PY
+          else
+            echo "## 実行結果なし" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: triage-${{ github.run_number }}
+          path: |
+            reports/
+            out/
+            state/
+          retention-days: 30

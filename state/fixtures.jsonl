@@ -1,0 +1,16 @@
+{"id": "2606.25189", "title": "ActPlane: Programmable OS-Level Policy Enforcement for Agent Harnesses", "expect": "harness"}
+{"id": "2607.22868", "title": "What Can Be Enforced? A Theory of Certified Runtime Safety for Tool-Using Agents", "expect": "harness"}
+{"id": "2604.04035", "title": "Causality Laundering: Denial-Feedback Leakage in Tool-Calling LLM Agents", "expect": "harness"}
+{"id": "2605.04785", "title": "AgentTrust: Runtime Safety Evaluation and Interception for AI Agent Tool Use", "expect": "harness"}
+{"id": "2605.28914", "title": "AIRGuard: Guarding Agent Actions with Runtime Authority Control", "expect": "harness"}
+{"id": "2606.26924", "title": "A Deterministic Control Plane for LLM Coding Agents", "expect": "harness"}
+{"id": "2607.20982", "title": "GuardianAgentBench: Where Agents Fail and How to Guard Them", "expect": "harness"}
+{"id": "2601.08012", "title": "Towards Verifiably Safe Tool Use for LLM Agents", "expect": "harness"}
+{"id": "2603.05344", "title": "Building Effective AI Coding Agents for the Terminal: Scaffolding, Harness, Context Engineering, and Lessons Learned", "expect": "harness"}
+{"id": "2604.03515", "title": "Inside the Scaffold: A Source-Code Taxonomy of Coding Agent Architectures", "expect": "harness"}
+{"id": "2606.20631", "title": "Harnessing Agent Skills: Architectural Patterns and a Reference Architecture for Skill-Mediated LLM Agents", "expect": "harness"}
+{"id": "2606.30306", "title": "Always-On Agents: A Survey of Persistent Memory, State, and Governance in LLM Agents", "expect": "memory"}
+{"id": "2501.13956", "title": "Zep: A Temporal Knowledge Graph Architecture for Agent Memory", "expect": "memory"}
+{"id": "2604.25149", "title": "Semantic Layers for Reliable LLM-Powered Data Analytics", "expect": "ontology"}
+{"id": "2604.00555", "title": "Ontology-Constrained Neural Reasoning in Enterprise Agentic Systems", "expect": "ontology"}
+{"id": "2607.27201", "title": "Mental World Modeling", "expect": "psych"}

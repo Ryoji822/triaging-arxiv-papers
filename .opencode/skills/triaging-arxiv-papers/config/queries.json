@@ -1,0 +1,321 @@
+{
+  "sources": {
+    "publishers": {
+      "acm": {
+        "prefix": "10.1145",
+        "label": "ACM",
+        "enabled": true
+      },
+      "pvldb": {
+        "prefix": "10.14778",
+        "label": "PVLDB (VLDB Endowment)",
+        "enabled": true
+      },
+      "ieee": {
+        "prefix": "10.1109",
+        "label": "IEEE",
+        "enabled": true
+      },
+      "acl": {
+        "prefix": "10.18653",
+        "label": "ACL Anthology",
+        "enabled": true
+      },
+      "springer": {
+        "prefix": "10.1007",
+        "label": "Springer",
+        "enabled": false
+      }
+    }
+  },
+  "defaults": {
+    "api_endpoint": "https://export.arxiv.org/api/query",
+    "rss_endpoint": "https://rss.arxiv.org/rss/",
+    "request_delay_seconds": 3.0,
+    "user_agent": "arxiv-triage/1.0 (personal research digest; contact: set-your-email)",
+    "lookback_days": 2,
+    "max_results_per_bucket": 120,
+    "keep_top_per_bucket": 25,
+    "min_prescore": 1,
+    "seen_retention_months": 4
+  },
+  "buckets": [
+    {
+      "id": "psych",
+      "label": "AIの心理学応用",
+      "categories": [
+        "cs.CL",
+        "cs.HC",
+        "cs.AI"
+      ],
+      "rss_feed": "cs.CL+cs.HC",
+      "keywords": [
+        "theory of mind",
+        "mental state",
+        "mental model",
+        "belief tracking",
+        "persuasion",
+        "persuasive",
+        "cognitive bias",
+        "affective computing",
+        "emotion recognition",
+        "social simulation",
+        "consumer psychology",
+        "behavioral science",
+        "trust calibration",
+        "mental world"
+      ]
+    },
+    {
+      "id": "research",
+      "label": "マーケティング調査",
+      "categories": [
+        "cs.CL",
+        "cs.HC",
+        "econ.GN",
+        "stat.AP"
+      ],
+      "rss_feed": "econ.GN+stat.AP",
+      "keywords": [
+        "synthetic respondent",
+        "silicon sampling",
+        "survey simulation",
+        "simulated participants",
+        "conjoint analysis",
+        "market research",
+        "consumer behavior",
+        "willingness to pay",
+        "customer segmentation",
+        "persona simulation",
+        "user simulator",
+        "opinion simulation",
+        "choice model"
+      ]
+    },
+    {
+      "id": "analytics",
+      "label": "データ分析",
+      "categories": [
+        "stat.ME",
+        "stat.ML",
+        "cs.LG",
+        "econ.EM"
+      ],
+      "rss_feed": "stat.ME+econ.EM",
+      "keywords": [
+        "uplift modeling",
+        "incrementality",
+        "media mix modeling",
+        "marketing mix model",
+        "attribution model",
+        "geo experiment",
+        "switchback experiment",
+        "randomized experiment",
+        "causal inference",
+        "heterogeneous treatment effect",
+        "off-policy evaluation",
+        "bid optimization",
+        "auction design"
+      ]
+    },
+    {
+      "id": "agentctl",
+      "label": "エージェント制御",
+      "categories": [
+        "cs.AI",
+        "cs.MA",
+        "cs.SE"
+      ],
+      "rss_feed": "cs.MA+cs.SE",
+      "keywords": [
+        "agent orchestration",
+        "multi-agent coordination",
+        "multi-agent collaboration",
+        "agent planning",
+        "tool selection",
+        "tool calling",
+        "agent evaluation",
+        "task decomposition",
+        "task delegation",
+        "workflow automation",
+        "computer use agent",
+        "agent reliability"
+      ]
+    },
+    {
+      "id": "creative",
+      "label": "広告クリエイティブ生成",
+      "categories": [
+        "cs.CV",
+        "cs.GR",
+        "cs.MM"
+      ],
+      "rss_feed": "cs.MM+cs.GR",
+      "keywords": [
+        "video generation",
+        "text-to-video",
+        "text-to-image",
+        "controllable generation",
+        "identity preserving",
+        "subject-driven generation",
+        "text rendering",
+        "layout generation",
+        "product image",
+        "advertising creative",
+        "virtual try-on",
+        "instruction-based image editing",
+        "aesthetic quality"
+      ]
+    },
+    {
+      "id": "coworker",
+      "label": "同僚としてのエージェント",
+      "categories": [
+        "cs.HC",
+        "cs.MA",
+        "cs.CY"
+      ],
+      "rss_feed": "cs.HC+cs.CY",
+      "keywords": [
+        "personal assistant",
+        "human-agent interaction",
+        "human-AI collaboration",
+        "agent teammate",
+        "agentic workflow",
+        "proactive assistant",
+        "long-term memory",
+        "personalization",
+        "human oversight",
+        "future of work",
+        "knowledge work",
+        "team collaboration",
+        "delegation to AI"
+      ]
+    },
+    {
+      "id": "ontology",
+      "label": "セマンティックレイヤーとオントロジー運用",
+      "categories": [
+        "cs.DB",
+        "cs.IR",
+        "cs.AI",
+        "cs.SE"
+      ],
+      "rss_feed": "cs.DB+cs.IR",
+      "keywords": [
+        "semantic layer",
+        "context graph",
+        "enterprise knowledge graph",
+        "knowledge graph construction",
+        "ontology engineering",
+        "ontology evolution",
+        "schema evolution",
+        "entity resolution",
+        "data integration",
+        "semantic interoperability",
+        "GraphRAG",
+        "text-to-SQL",
+        "digital twin",
+        "metadata management",
+        "data provenance",
+        "temporal knowledge graph",
+        "ontology"
+      ],
+      "exclude_keywords": [
+        "description logic",
+        "tableau algorithm",
+        "decidability",
+        "complexity of query answering",
+        "first-order rewriting",
+        "expressive power"
+      ]
+    },
+    {
+      "id": "memory",
+      "label": "エージェントの長期記憶",
+      "categories": [
+        "cs.CL",
+        "cs.IR",
+        "cs.AI",
+        "cs.HC"
+      ],
+      "rss_feed": "cs.CL+cs.IR",
+      "keywords": [
+        "long-term memory",
+        "agent memory",
+        "agentic memory",
+        "lifelong memory",
+        "memory consolidation",
+        "episodic memory",
+        "memory management",
+        "memory retrieval",
+        "temporal knowledge graph",
+        "conversational memory",
+        "context compression",
+        "continual learning",
+        "self-updatable",
+        "knowledge editing",
+        "user modeling"
+      ],
+      "exclude_keywords": [
+        "KV cache",
+        "attention sink",
+        "positional encoding"
+      ]
+    },
+    {
+      "id": "harness",
+      "label": "エージェント・ハーネス設計",
+      "categories": [
+        "cs.SE",
+        "cs.AI",
+        "cs.CR",
+        "cs.MA"
+      ],
+      "rss_feed": "cs.SE+cs.CR",
+      "keywords": [
+        "agent harness",
+        "harness engineering",
+        "agent scaffolding",
+        "agent-computer interface",
+        "context engineering",
+        "runtime enforcement",
+        "tool call interception",
+        "policy enforcement",
+        "guardrail",
+        "information-flow control",
+        "privilege control",
+        "access control",
+        "authority control",
+        "runtime verification",
+        "runtime safety",
+        "agent safety",
+        "prompt injection",
+        "agent observability",
+        "control plane",
+        "subagent orchestration",
+        "scaffold",
+        "sandboxing",
+        "least privilege",
+        "policy engine"
+      ],
+      "exclude_keywords": [
+        "jailbreak prompt",
+        "adversarial example",
+        "adversarial robustness"
+      ]
+    }
+  ],
+  "daily_schedule": {
+    "timezone": "Asia/Tokyo",
+    "skip_weekdays": [
+      "sat",
+      "sun"
+    ],
+    "lookback_days": {
+      "mon": 4,
+      "default": 2
+    },
+    "_note": "月曜の告知は金14:00 ET〜日14:00 ET の投稿を含むため窓を広く取る。土日は告知がない。"
+  }
+}

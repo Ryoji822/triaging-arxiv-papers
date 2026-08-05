@@ -1,0 +1,14 @@
+# 中間ファイル。候補リストは毎日作り直すのでコミットしない
+out/
+
+# 状態ファイルの書き込み中の一時ファイル
+state/.*.tmp
+
+# claude-mem が自動生成する文脈ファイル
+**/CLAUDE.md
+
+# Python
+__pycache__/
+*.pyc
+
+.DS_Store
