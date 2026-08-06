@@ -5,6 +5,11 @@
       "candidates": 84,
       "delivered": "chat",
       "newly_seen": 84
+    },
+    "2026-08-06": {
+      "at": "2026-08-06T05:25:46+00:00",
+      "candidates": 38,
+      "newly_seen": 38
     }
   }
 }
