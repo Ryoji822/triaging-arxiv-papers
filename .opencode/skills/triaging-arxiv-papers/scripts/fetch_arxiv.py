@@ -65,18 +65,46 @@ def base_id(raw: str) -> str:
     return m.group(1) if m else (raw or "").strip()
 
 
-def http_get(url: str, user_agent: str, retries: int = 3) -> bytes:
+# arXiv API は混雑時に 429/503 を数分単位で返し続けることがある（2026-08-12 の
+# 日次実行は 3/6/9 秒の再試行では乗り切れずに落ちた）。レート制限系は長めに待つ。
+RETRY_COUNT = 5
+RETRY_WAIT_BASE = 5.0  # 通常エラーの初回待ち秒数（以後倍々）
+RETRY_WAIT_CAP = 120.0  # 指数バックオフの上限
+RATELIMIT_WAIT_FLOOR = 30.0  # 429/503 のときの最低待ち秒数
+RETRY_AFTER_MAX = 300.0  # Retry-After ヘッダーに付き合う上限
+
+# テストから差し替えるための継ぎ目。実運用では標準のものをそのまま使う
+_urlopen = urllib.request.urlopen
+_sleep = time.sleep
+
+
+def retry_wait(attempt: int, exc: Exception | None) -> float:
+    """attempt 回目(0始まり)の失敗後に待つ秒数を決める。"""
+    wait = min(RETRY_WAIT_CAP, RETRY_WAIT_BASE * (2 ** attempt))
+    if isinstance(exc, urllib.error.HTTPError) and exc.code in (429, 503):
+        wait = max(wait, RATELIMIT_WAIT_FLOOR)
+        retry_after = exc.headers.get("Retry-After") if exc.headers else None
+        try:
+            wait = max(wait, min(float(retry_after), RETRY_AFTER_MAX))
+        except (TypeError, ValueError):
+            pass
+    return wait
+
+
+def http_get(url: str, user_agent: str, retries: int = RETRY_COUNT) -> bytes:
     last = None
     for attempt in range(retries):
         req = urllib.request.Request(url, headers={"User-Agent": user_agent})
         try:
-            with urllib.request.urlopen(req, timeout=60) as resp:
+            with _urlopen(req, timeout=60) as resp:
                 return resp.read()
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError) as exc:
+        except (urllib.error.URLError, TimeoutError) as exc:
             last = exc
-            wait = 3.0 * (attempt + 1)
-            log(f"取得失敗 ({exc}) — {wait:.0f}秒後に再試行")
-            time.sleep(wait)
+            if attempt == retries - 1:
+                break
+            wait = retry_wait(attempt, exc)
+            log(f"取得失敗 ({exc}) — {wait:.0f}秒後に再試行 ({attempt + 1}/{retries - 1})")
+            _sleep(wait)
     raise RuntimeError(f"取得に失敗しました: {url} ({last})")
 
 
@@ -220,7 +248,8 @@ def collect(cfg: dict, args) -> tuple[list[dict], dict]:
 
     seen = set() if args.ignore_seen else SeenStore(SEEN_PATH).ids
     by_id: dict[str, dict] = {}
-    meta = {"fetched": 0, "dropped_old": 0, "dropped_seen": 0, "dropped_lowscore": 0}
+    meta = {"fetched": 0, "dropped_old": 0, "dropped_seen": 0,
+            "dropped_lowscore": 0, "failed_buckets": []}
 
     for i, bucket in enumerate(buckets):
         urls = [api_url(d["api_endpoint"], build_api_query(bucket),
@@ -228,12 +257,20 @@ def collect(cfg: dict, args) -> tuple[list[dict], dict]:
         if args.include_rss and bucket.get("rss_feed"):
             urls.append(d["rss_endpoint"] + bucket["rss_feed"])
 
+        # 1バケツの取得失敗で日次配信を丸ごと落とさない。取れたバケツだけで
+        # 続行し、失敗は meta に残して Summary で見えるようにする（全滅は後段で例外）
         entries: list[dict] = []
         for j, url in enumerate(urls):
             if i or j:
-                time.sleep(delay)  # arXiv の利用規約: 3秒に1リクエスト
+                _sleep(delay)  # arXiv の利用規約: 3秒に1リクエスト
             log(f"{bucket['label']}: {url[:110]}...")
-            payload = http_get(url, ua)
+            try:
+                payload = http_get(url, ua)
+            except RuntimeError as exc:
+                log(f"警告: {bucket['label']} を諦めて次のバケツへ進みます ({exc})")
+                meta["failed_buckets"].append(bucket["label"])
+                entries = []
+                break
             entries += parse_rss(payload) if "rss.arxiv.org" in url else parse_atom(payload)
 
         for e in entries:
@@ -309,6 +346,11 @@ def collect(cfg: dict, args) -> tuple[list[dict], dict]:
         )
         final += rows[:cap]
         meta["dropped_lowscore"] += max(0, len(rows) - cap)
+
+    if meta["failed_buckets"]:
+        if len(meta["failed_buckets"]) == len(buckets):
+            raise RuntimeError("全バケツの取得に失敗しました（arXiv API が応答していません）")
+        meta["reason"] = "取得に失敗したバケツ: " + ", ".join(meta["failed_buckets"])
 
     meta["candidates"] = len(final)
     meta["window"] = f"{cutoff.isoformat()} 〜 {datetime.now(timezone.utc).date().isoformat()}"

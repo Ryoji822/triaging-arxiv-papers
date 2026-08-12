@@ -31,6 +31,7 @@ fail() { printf '[run-daily] ERROR: %s\n' "$1" >&2; exit 1; }
 # 設定は静かに腐る。取り逃しも重複もレポートを見ただけでは気づけない。
 log "回帰テストを実行します"
 python3 "$SKILL_DIR/scripts/selftest_state.py" >&2 || fail "状態管理のテストが落ちました"
+python3 "$SKILL_DIR/scripts/selftest_fetch.py" >&2 || fail "取得リトライのテストが落ちました"
 python3 "$SKILL_DIR/scripts/selftest.py" >&2 || log "警告: キーワードに取り逃しがあります（続行します）"
 
 # ---------------------------------------------------------------- 1. 取得

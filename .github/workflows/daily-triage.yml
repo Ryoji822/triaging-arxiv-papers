@@ -33,7 +33,8 @@ env:
 jobs:
   triage:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # 採点(最大45分) + arXiv 混雑時のリトライ待ち(バケツごと最大数分)を見込む
+    timeout-minutes: 90
 
     steps:
       - uses: actions/checkout@v4
