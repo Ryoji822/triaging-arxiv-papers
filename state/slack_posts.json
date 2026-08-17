@@ -41,6 +41,12 @@
       "delivered": 4,
       "parent_ts": "1786680887.079699",
       "total": 4
+    },
+    "2026-08-17": {
+      "channel": "D07SF8MGR6D",
+      "delivered": 3,
+      "parent_ts": "1786949362.037689",
+      "total": 3
     }
   }
 }
