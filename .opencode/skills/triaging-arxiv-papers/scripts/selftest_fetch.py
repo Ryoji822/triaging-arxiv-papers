@@ -14,6 +14,7 @@ import argparse
 import io
 import sys
 import urllib.error
+from datetime import datetime, timezone
 from email.message import Message
 from pathlib import Path
 
@@ -132,12 +133,16 @@ ATOM_TEMPLATE = """<?xml version="1.0" encoding="UTF-8"?>
     <id>http://arxiv.org/abs/{pid}v1</id>
     <title>{title}</title>
     <summary>{summary}</summary>
-    <published>2026-08-12T00:00:00Z</published>
-    <updated>2026-08-12T00:00:00Z</updated>
+    <published>{stamp}</published>
+    <updated>{stamp}</updated>
     <author><name>Test Author</name></author>
   </entry>
 </feed>
 """
+
+# collect は published が lookback 窓（今日 − days）より古い候補を捨てるため、
+# 固定日付だと日が経つと窓から外れてテストが恒久的に落ちる（2026-08-17 の実障害）。
+FIXTURE_STAMP = datetime.now(timezone.utc).strftime("%Y-%m-%dT00:00:00Z")
 
 CFG = {
     "defaults": {
@@ -177,7 +182,8 @@ def test_collect_isolation() -> None:
                 raise RuntimeError("取得に失敗しました: ... (HTTP Error 429)")
             return ATOM_TEMPLATE.format(
                 pid="2608.00001", title="On Agent Memory",
-                summary="We study agent memory for LLM agents.").encode()
+                summary="We study agent memory for LLM agents.",
+                stamp=FIXTURE_STAMP).encode()
 
         fetch_arxiv.http_get = flaky
         rows, meta = fetch_arxiv.collect(CFG, make_args())
