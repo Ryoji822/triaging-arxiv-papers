@@ -47,7 +47,7 @@ def fetch_abstracts(ids: list[str], cfg: dict) -> dict[str, str]:
         f"{d['api_endpoint']}?"
         + urllib.parse.urlencode({"id_list": ",".join(ids), "max_results": len(ids)})
     )
-    payload = fa.http_get(url, d["user_agent"])
+    payload = fa.http_get(url, fa.resolve_user_agent(d["user_agent"]))
     return {e["id"]: e["abstract"] for e in fa.parse_atom(payload)}
 
 

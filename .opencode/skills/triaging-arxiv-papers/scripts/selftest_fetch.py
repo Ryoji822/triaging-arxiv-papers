@@ -11,7 +11,9 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import io
+import os
 import sys
 import urllib.error
 from datetime import datetime, timezone
@@ -41,6 +43,47 @@ def http_error(code: int, retry_after: str | None = None) -> urllib.error.HTTPEr
 
 
 # ---------------------------------------------------------------- retry wait
+
+@contextlib.contextmanager
+def env(name: str, value: str | None):
+    """環境変数を一時的に差し替える。テスト同士が汚染し合わないように戻す。"""
+    before = os.environ.get(name)
+    if value is None:
+        os.environ.pop(name, None)
+    else:
+        os.environ[name] = value
+    try:
+        yield
+    finally:
+        if before is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = before
+
+
+def test_user_agent() -> None:
+    print("=== User-Agent の連絡先 ===")
+    template = "arxiv-triage/1.0 (personal research digest; contact: set-your-email)"
+    filled = "arxiv-triage/1.0 (personal research digest; contact: me@example.com)"
+
+    with env(fetch_arxiv.CONTACT_ENV, "me@example.com"):
+        check("環境変数の連絡先で雛形を差し替える",
+              fetch_arxiv.resolve_user_agent(template), filled)
+    with env(fetch_arxiv.CONTACT_ENV, "  me@example.com  "):
+        check("前後の空白は落とす",
+              fetch_arxiv.resolve_user_agent(template), filled)
+    with env(fetch_arxiv.CONTACT_ENV, None):
+        check("未設定でも取得は止めない（雛形のまま）",
+              fetch_arxiv.resolve_user_agent(template), template)
+    with env(fetch_arxiv.CONTACT_ENV, "   "):
+        check("空白だけの指定は未設定とみなす",
+              fetch_arxiv.resolve_user_agent(template), template)
+
+    settled = "arxiv-triage/1.0 (contact: already@example.com)"
+    with env(fetch_arxiv.CONTACT_ENV, "me@example.com"):
+        check("雛形を含まないUAは書き換えない",
+              fetch_arxiv.resolve_user_agent(settled), settled)
+
 
 def test_retry_wait() -> None:
     print("=== リトライの待ち時間 ===")
@@ -209,6 +252,7 @@ def test_collect_isolation() -> None:
 
 
 def main() -> int:
+    test_user_agent()
     test_retry_wait()
     test_http_get()
     test_collect_isolation()

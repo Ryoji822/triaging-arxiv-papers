@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import time
@@ -73,9 +74,26 @@ RETRY_WAIT_CAP = 120.0  # 指数バックオフの上限
 RATELIMIT_WAIT_FLOOR = 30.0  # 429/503 のときの最低待ち秒数
 RETRY_AFTER_MAX = 300.0  # Retry-After ヘッダーに付き合う上限
 
+# arXiv は User-Agent に連絡先を入れることを推奨している。雛形のまま投げると
+# 素性不明のボットとして真っ先に絞られるが、公開リポジトリに個人のメールを
+# 置きたくはない。そこで連絡先だけ環境変数から差し込む。
+CONTACT_ENV = "ARXIV_CONTACT_EMAIL"
+CONTACT_PLACEHOLDER = "set-your-email"
+
 # テストから差し替えるための継ぎ目。実運用では標準のものをそのまま使う
 _urlopen = urllib.request.urlopen
 _sleep = time.sleep
+
+
+def resolve_user_agent(template: str) -> str:
+    """User-Agent の雛形に環境変数の連絡先を埋める。"""
+    mail = os.environ.get(CONTACT_ENV, "").strip()
+    if mail:
+        return template.replace(CONTACT_PLACEHOLDER, mail)
+    if CONTACT_PLACEHOLDER in template:
+        log(f"警告: {CONTACT_ENV} が未設定です。"
+            "連絡先なしで arXiv に問い合わせます（429 を受けやすくなります）")
+    return template
 
 
 def retry_wait(attempt: int, exc: Exception | None) -> float:
@@ -236,7 +254,7 @@ def prescore(
 
 def collect(cfg: dict, args) -> tuple[list[dict], dict]:
     d = cfg["defaults"]
-    ua = d["user_agent"]
+    ua = resolve_user_agent(d["user_agent"])
     delay = float(d["request_delay_seconds"])
     cutoff = (datetime.now(timezone.utc) - timedelta(days=args.days)).date()
 
