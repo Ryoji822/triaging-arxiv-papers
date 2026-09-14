@@ -67,6 +67,9 @@ jobs:
       - name: Run daily triage
         env:
           GLM_API_KEY: ${{ secrets.GLM_API_KEY }}
+          # arXiv は連絡先入りの User-Agent を推奨している。公開リポジトリに
+          # メールを置かずに済むよう secret から差し込む
+          ARXIV_CONTACT_EMAIL: ${{ secrets.ARXIV_CONTACT_EMAIL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_CHANNEL: ${{ vars.SLACK_CHANNEL }}
           OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || 'zai/glm-5.2' }}
